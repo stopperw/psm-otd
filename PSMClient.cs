@@ -1,0 +1,117 @@
+using System.Reflection;
+using OpenTabletDriver.Plugin;
+using OpenTabletDriver.Plugin.Attributes;
+using OpenTabletDriver.Plugin.DependencyInjection;
+using OpenTabletDriver.Plugin.Output;
+using OpenTabletDriver.Plugin.Platform.Display;
+using OpenTabletDriver.Plugin.Tablet;
+
+namespace PSM.OTD;
+
+[PluginName(PLUGIN_NAME)]
+public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
+{
+    public static PSMClient? Instance;
+    
+    public const string PLUGIN_NAME = "Pain Studio Mask client";
+    private bool _active = false;
+    private readonly Connection? _connection;
+    
+    private bool _firstEvent = true;
+    private bool _lastProximity = false;
+
+#pragma warning disable CS8618
+    public PSMClient()
+#pragma warning restore CS8618
+    {
+        Log.Write(nameof(PSMClient), $"Client enabled!");
+        Instance = this;
+        _active = true;
+        if (_connection != null)
+            _connection.Start();
+        else
+            _connection = new Connection();
+    }
+    
+    public void Dispose()
+    {
+        Log.Write(nameof(PSMClient), $"Client disabled.");
+        _active = false;
+        _lastProximity = false;
+        _connection?.Terminate();
+    }
+    
+    public void Consume(IDeviceReport value)
+    {
+        if (_firstEvent)
+        {
+            _firstEvent = false;
+            string config = ConfigGenerator.GenerateConfig(VirtualScreen!, Tablet!);
+            string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+            string configPath = Path.Join(pluginFolder, "psm.json");
+            File.WriteAllText(configPath, config);
+            Log.Write(nameof(PSMClient), $"Default config for your tablet was written to {configPath}");
+            Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
+        }
+        if (!_active || _connection == null || !(_connection?.Connected ?? false)) return;
+
+        if (value is ITabletReport report)
+        {
+            // Log.Write(nameof(PSMClient),
+            //     $"TAB {report.Position} | {report.Pressure} | {LogHelper.LogButtons(report.PenButtons)}");
+            
+            float pressure = report.Pressure;
+            float pressureValue = pressure / Tablet!.Properties.Specifications.Pen.MaxPressure;
+            uint normalPressure = (uint)(pressureValue * 32767f);
+            
+            bool mainBtn = pressureValue > 0.01f;
+            uint buttons = (uint)(mainBtn ? 1 : 0);
+            for (int i = 0; i < report.PenButtons.Length; i++)
+            {
+                buttons |= ((uint)(report.PenButtons[i] ? 1 : 0) << (i + 1));
+            }
+            
+            _connection.SendPacket(new C2SPackets.TabletEvent
+            {
+                Buttons = buttons,
+                X = (uint)(report.Position.X * 1000),
+                Y = (uint)(report.Position.Y * 1000),
+                NormalPressure = normalPressure,
+            });
+        }
+        
+        if (value is IProximityReport proximity)
+        {
+            // Log.Write(nameof(PSMClient), $"PROX {proximity.HoverDistance} | NEAR: {proximity.NearProximity}");
+            if (proximity.NearProximity && !_lastProximity)
+            {
+                _lastProximity = true;
+                _connection.SendPacket(new C2SPackets.Proximity
+                {
+                    Value = true
+                });
+            }
+        }
+        
+        if (value is OutOfRangeReport outOfRange)
+        {
+            // Log.Write(nameof(PSMClient), $"Out of range.");
+            if (_lastProximity)
+            {
+                _lastProximity = false;
+                _connection.SendPacket(new C2SPackets.Proximity
+                {
+                    Value = false
+                });
+            }
+        }
+
+        Emit?.Invoke(value);
+    }
+
+    public event Action<IDeviceReport>? Emit;
+    public PipelinePosition Position => PipelinePosition.PostTransform;
+    [TabletReference] public TabletReference Tablet { get; set; }
+    [Resolved] public IVirtualScreen VirtualScreen { get; set; }
+    // [Resolved] public IDriver Driver { get; set; }
+}
