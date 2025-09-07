@@ -4,6 +4,11 @@ namespace PSM.OTD;
 
 #pragma warning disable CS8618
 
+public static class NetCode
+{
+    public const uint CompatibleVersion = 1;
+}
+
 public static class C2SPackets
 {
     public interface IPacket {}

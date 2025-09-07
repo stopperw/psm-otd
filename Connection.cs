@@ -75,6 +75,11 @@ public class Connection
                     var packet = JsonSerializer.Deserialize<S2CPackets.Hi>(json);
                     if (packet == null)
                         continue;
+                    if (packet.Compatible != NetCode.CompatibleVersion)
+                    {
+                        Log.Write(LogGroup, $"Server is running an incompatible PSM version! S{packet.Compatible} != C{NetCode.CompatibleVersion}");
+                        break;
+                    }
                 }
             }
         }
@@ -82,6 +87,7 @@ public class Connection
         {
             // ignored
         }
+        Terminate();
         Log.Write(LogGroup, "Disconnected from the PSM server.");
     }
 
