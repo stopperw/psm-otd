@@ -8,23 +8,26 @@ using OpenTabletDriver.Plugin.Tablet;
 
 namespace PSM.OTD;
 
-[PluginName(PLUGIN_NAME)]
+#pragma warning disable CS8618
+
+[PluginName(DisplayName)]
+// ReSharper disable once ClassNeverInstantiated.Global
 public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
 {
+    public const string DisplayName = "Pain Studio Mask client";
+    public const string Version = "0.0.2";
+    
     public static PSMClient? Instance;
     
-    public const string PLUGIN_NAME = "Pain Studio Mask client";
     private bool _active = false;
     private readonly Connection? _connection;
     
     private bool _firstEvent = true;
     private bool _lastProximity = false;
 
-#pragma warning disable CS8618
     public PSMClient()
-#pragma warning restore CS8618
     {
-        Log.Write(nameof(PSMClient), $"Client enabled!");
+        Log.Write(nameof(PSMClient), $"PSM Client v{Version} enabled!");
         Instance = this;
         _active = true;
         if (_connection != null)

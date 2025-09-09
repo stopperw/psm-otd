@@ -47,7 +47,7 @@ public class Connection
         Log.Write(LogGroup, "Successfully connected to a PSM server!");
         SendPacket(new C2SPackets.Hi
         {
-            Name = "PSM-OTD 0.0.1"
+            Name = $"PSM-OTD {PSMClient.Version}"
         });
         // Connection may cut like that when closing the app with injected PSM,
         // so this check is needed to not crash the plugin/OTD.
