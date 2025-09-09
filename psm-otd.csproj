@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>PSM.OTD</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="OpenTabletDriver" Version="0.6.5.1" />
     <PackageReference Include="OpenTabletDriver.Plugin" Version="0.6.5.1" />
   </ItemGroup>
 </Project>

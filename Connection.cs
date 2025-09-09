@@ -42,6 +42,7 @@ public class Connection
         {
             // Log.Exception(e);
             // ignored
+            return;
         }
         Log.Write(LogGroup, "Successfully connected to a PSM server!");
         SendPacket(new C2SPackets.Hi

@@ -1,14 +1,14 @@
-using OpenTabletDriver.Plugin.Platform.Display;
+using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
 
 namespace PSM.OTD;
 
 public static class ConfigGenerator
 {
-    public static string GenerateConfig(IVirtualScreen screen, TabletReference tablet)
+    public static string GenerateConfig(AbsoluteOutputMode absolute, TabletReference tablet)
     {
-        uint outputWidth = (uint)screen.Width;
-        uint outputHeight = (uint)screen.Height;
+        var outputWidth = (uint)absolute.Output.Width;
+        var outputHeight = (uint)absolute.Output.Height;
         string config = $@"{{
     ""preset"": {{
         ""status"": 0,

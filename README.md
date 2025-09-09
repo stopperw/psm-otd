@@ -41,7 +41,7 @@ alongside Pain Studio Mask's `wintab32.dll`.
 
 Make a release build with `dotnet build -c Release`.
 
-# Info
+# Disclaimer
 
 The plugin will try to make a TCP connection to `127.0.0.1:40302` (PSM server) every 15 seconds.
 If this is something you don't want, disable the client plugin in `Filters` (and Apply)

@@ -1,9 +1,9 @@
+using System.Numerics;
 using System.Reflection;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Output;
-using OpenTabletDriver.Plugin.Platform.Display;
 using OpenTabletDriver.Plugin.Tablet;
 
 namespace PSM.OTD;
@@ -46,36 +46,49 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
         if (_firstEvent)
         {
             _firstEvent = false;
-            string config = ConfigGenerator.GenerateConfig(VirtualScreen!, Tablet!);
+            DetectOutputMode();
+            string config = ConfigGenerator.GenerateConfig(AbsoluteOutputMode!, Tablet!);
             string pluginFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
             string configPath = Path.Join(pluginFolder, "psm.json");
             File.WriteAllText(configPath, config);
             Log.Write(nameof(PSMClient), $"Default config for your tablet was written to {configPath}");
             Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
         }
-        if (!_active || _connection == null || !(_connection?.Connected ?? false)) return;
+
+        if (!_active || _connection == null || !(_connection?.Connected ?? false))
+        {
+            Emit?.Invoke(value);
+            return;
+        }
 
         if (value is ITabletReport report)
         {
             // Log.Write(nameof(PSMClient),
             //     $"TAB {report.Position} | {report.Pressure} | {LogHelper.LogButtons(report.PenButtons)}");
-            
+
             float pressure = report.Pressure;
             float pressureValue = pressure / Tablet!.Properties.Specifications.Pen.MaxPressure;
             uint normalPressure = (uint)(pressureValue * 32767f);
-            
+
             bool mainBtn = pressureValue > 0.01f;
             uint buttons = (uint)(mainBtn ? 1 : 0);
             for (int i = 0; i < report.PenButtons.Length; i++)
             {
                 buttons |= ((uint)(report.PenButtons[i] ? 1 : 0) << (i + 1));
             }
+
+            float x = report.Position.X;
+            float y = report.Position.Y;
+            Vector2 areaPos = AbsoluteOutputMode.Output.Position -
+                              new Vector2(AbsoluteOutputMode.Output.Width, AbsoluteOutputMode.Output.Height) / 2;
+            x -= areaPos.X;
+            y -= areaPos.Y;
             
             _connection.SendPacket(new C2SPackets.TabletEvent
             {
                 Buttons = buttons,
-                X = (uint)(report.Position.X * 1000),
-                Y = (uint)(report.Position.Y * 1000),
+                X = (uint)(x * 1000),
+                Y = (uint)(y * 1000),
                 NormalPressure = normalPressure,
             });
         }
@@ -112,6 +125,17 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     public event Action<IDeviceReport>? Emit;
     public PipelinePosition Position => PipelinePosition.PostTransform;
     [TabletReference] public TabletReference Tablet { get; set; }
-    [Resolved] public IVirtualScreen VirtualScreen { get; set; }
-    // [Resolved] public IDriver Driver { get; set; }
+    [Resolved] public IDriver Driver { get; set; }
+    public AbsoluteOutputMode AbsoluteOutputMode { get; set; }
+
+    public void DetectOutputMode()
+    {
+        if (Driver is not OpenTabletDriver.Driver driver) return;
+        IOutputMode output = driver.InputDevices
+            .Where(dev => dev?.OutputMode?.Elements?.Contains(this) ?? false)
+            .Select(dev => dev?.OutputMode).FirstOrDefault()!;
+
+        if (output is AbsoluteOutputMode absolute)
+            AbsoluteOutputMode = absolute;
+    }
 }
