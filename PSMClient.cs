@@ -43,6 +43,8 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     
     public void Consume(IDeviceReport value)
     {
+        Emit?.Invoke(value);
+        
         if (_firstEvent)
         {
             _firstEvent = false;
@@ -54,12 +56,10 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             Log.Write(nameof(PSMClient), $"Default config for your tablet was written to {configPath}");
             Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
         }
+        
 
         if (!_active || _connection == null || !(_connection?.Connected ?? false))
-        {
-            Emit?.Invoke(value);
             return;
-        }
 
         if (value is ITabletReport report)
         {
@@ -83,6 +83,14 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                               new Vector2(AbsoluteOutputMode.Output.Width, AbsoluteOutputMode.Output.Height) / 2;
             x -= areaPos.X;
             y -= areaPos.Y;
+            
+            // Out of range check
+            if (
+                x < 0 ||
+                y < 0 ||
+                x > AbsoluteOutputMode.Output.Width ||
+                y > AbsoluteOutputMode.Output.Height
+            ) return;
             
             _connection.SendPacket(new C2SPackets.TabletEvent
             {
