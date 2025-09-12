@@ -18,12 +18,14 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     public const string Version = "0.0.2";
     
     public static PSMClient? Instance;
+
+    public bool Connected => _active && _connection != null && (_connection?.Connected ?? false);
     
     private bool _active = false;
     private readonly Connection? _connection;
     
     private bool _firstEvent = true;
-    private bool _lastProximity = false;
+    private bool _proximity = false;
 
     public PSMClient()
     {
@@ -40,7 +42,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     {
         Log.Write(nameof(PSMClient), $"Client disabled.");
         _active = false;
-        _lastProximity = false;
+        _proximity = false;
         _connection?.Terminate();
     }
     
@@ -59,10 +61,8 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             Log.Write(nameof(PSMClient), $"Default config for your tablet was written to {configPath}");
             Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
         }
-        
 
-        if (!_active || _connection == null || !(_connection?.Connected ?? false))
-            return;
+        if (!Connected || _connection == null) return;
 
         if (value is ITabletReport report)
         {
@@ -103,34 +103,33 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                 NormalPressure = normalPressure,
             });
         }
-        
+
         if (value is IProximityReport proximity)
         {
             // Log.Write(nameof(PSMClient), $"PROX {proximity.HoverDistance} | NEAR: {proximity.NearProximity}");
-            if (proximity.NearProximity && !_lastProximity)
-            {
-                _lastProximity = true;
-                _connection.SendPacket(new C2SPackets.Proximity
-                {
-                    Value = true
-                });
-            }
+            UpdateProximity(proximity.NearProximity);
         }
-        
+
         if (value is OutOfRangeReport outOfRange)
         {
             // Log.Write(nameof(PSMClient), $"Out of range.");
-            if (_lastProximity)
-            {
-                _lastProximity = false;
-                _connection.SendPacket(new C2SPackets.Proximity
-                {
-                    Value = false
-                });
-            }
+            UpdateProximity(false);
         }
 
         Emit?.Invoke(value);
+    }
+
+    private void UpdateProximity(bool value)
+    {
+        if (value != _proximity && _active && _connection != null)
+        {
+            _connection.SendPacket(new C2SPackets.Proximity
+            {
+                Value = value
+            });
+        }
+
+        _proximity = value;
     }
 
     public event Action<IDeviceReport>? Emit;
