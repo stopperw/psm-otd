@@ -1,10 +1,12 @@
 using System.Numerics;
 using System.Reflection;
+using System.Timers;
 using OpenTabletDriver.Plugin;
 using OpenTabletDriver.Plugin.Attributes;
 using OpenTabletDriver.Plugin.DependencyInjection;
 using OpenTabletDriver.Plugin.Output;
 using OpenTabletDriver.Plugin.Tablet;
+using Timer = System.Timers.Timer;
 
 namespace PSM.OTD;
 
@@ -27,6 +29,25 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     private bool _firstEvent = true;
     private bool _proximity = false;
 
+    public const double ProximityTimerInterval = 2000; // 2000ms (2 sec.)
+    [BooleanProperty(
+        "Timeout-based proximity loss",
+        "Report pen being out of range when there is no packets in the last 2 seconds"
+    )]
+    [DefaultPropertyValue(true)]
+    public bool TimeoutProximity { get; set; } = true;
+
+    private Timer _proximityTimer;
+    private Timer ProximityTimer
+    {
+        get => _proximityTimer;
+        set
+        {
+            _proximityTimer = value;
+            _proximityTimer.Elapsed += OnProximityTimerElapsed;
+        }
+    }
+
     public PSMClient()
     {
         Log.Write(nameof(PSMClient), $"PSM Client v{Version} enabled!");
@@ -36,6 +57,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             _connection.Start();
         else
             _connection = new Connection();
+        ProximityTimer = new Timer(ProximityTimerInterval);
     }
     
     public void Dispose()
@@ -102,6 +124,8 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                 Y = (uint)(y * 1000),
                 NormalPressure = normalPressure,
             });
+
+            ProximityTimer.Start();
         }
 
         if (value is IProximityReport proximity)
@@ -130,6 +154,13 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
         }
 
         _proximity = value;
+    }
+
+    private void OnProximityTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        if (!TimeoutProximity) return;
+        if (!Connected || _connection == null) return;
+        UpdateProximity(false);
     }
 
     public event Action<IDeviceReport>? Emit;
