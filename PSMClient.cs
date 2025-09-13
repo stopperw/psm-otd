@@ -43,8 +43,11 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
         get => _proximityTimer;
         set
         {
+            _proximityTimer.Stop();
+            _proximityTimer.Dispose();
             _proximityTimer = value;
             _proximityTimer.Elapsed += OnProximityTimerElapsed;
+            _proximityTimer.Start();
         }
     }
 
@@ -57,7 +60,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             _connection.Start();
         else
             _connection = new Connection();
-        ProximityTimer = new Timer(ProximityTimerInterval);
+        _proximityTimer = new Timer(ProximityTimerInterval);
     }
     
     public void Dispose()
@@ -125,7 +128,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                 NormalPressure = normalPressure,
             });
 
-            ProximityTimer.Start();
+            ProximityTimer = new Timer(ProximityTimerInterval);
         }
 
         if (value is IProximityReport proximity)
@@ -158,6 +161,8 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
 
     private void OnProximityTimerElapsed(object? sender, ElapsedEventArgs e)
     {
+        _proximityTimer.Stop();
+        _proximityTimer.Dispose();
         if (!TimeoutProximity) return;
         if (!Connected || _connection == null) return;
         UpdateProximity(false);
