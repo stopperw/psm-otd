@@ -127,10 +127,14 @@ public class Connection
     
     public void Terminate()
     {
-        Active = false;
         Client.Close();
         Log.Write(LogGroup, "Connection terminated.");
     }
+
+	public void Destroy()
+	{
+		Active = false;
+	}
 
     private const string LogGroup = "PSMConnection";
 }

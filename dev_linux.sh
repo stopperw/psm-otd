@@ -2,6 +2,7 @@
 
 # https://github.com/TheBlueOompaLoompa/BetterCalibrator/blob/56b8d873f386f6a42d502498490111a6bd50c541/debug.sh
 
+systemctl --user stop opentabletdriver.service
 killall -9 OpenTabletDriver.UX.Gtk
 killall -9 OpenTabletDriver.Daemon
 

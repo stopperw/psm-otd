@@ -68,7 +68,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
         Log.Write(nameof(PSMClient), $"Client disabled.");
         _active = false;
         _proximity = false;
-        _connection?.Terminate();
+        _connection?.Destroy();
     }
     
     public void Consume(IDeviceReport value)
@@ -84,6 +84,9 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             string configPath = Path.Join(pluginFolder, "psm.json");
             File.WriteAllText(configPath, config);
             Log.Write(nameof(PSMClient), $"Default config for your tablet was written to {configPath}");
+			try {
+				Log.Write(nameof(PSMClient), $"({Path.GetFullPath(configPath)})");
+			} catch (Exception) {}
             Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
         }
 
