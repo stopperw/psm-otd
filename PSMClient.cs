@@ -17,7 +17,7 @@ namespace PSM.OTD;
 public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
 {
     public const string DisplayName = "Pain Studio Mask client";
-    public const string Version = "0.0.2";
+    public const string Version = "0.0.3";
     
     public static PSMClient? Instance;
 

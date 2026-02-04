@@ -31,6 +31,8 @@ This will create `psm.json` with your display & tablet's options in the plugin f
 You can copy it to your drawing app's folder (for CSP, it should be at `C:\Program Files\CELSYS\CLIP STUDIO 1.5\CLIP STUDIO PAINT\psm.json`)
 alongside Pain Studio Mask's `wintab32.dll`.
 
+> In some cases, psm.json might be generated in a wrong folder. Absolute path to it will be in the log.
+
 # Development
 
 - `dotnet restore`
