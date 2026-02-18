@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 # https://github.com/TheBlueOompaLoompa/BetterCalibrator/blob/56b8d873f386f6a42d502498490111a6bd50c541/debug.sh
 
