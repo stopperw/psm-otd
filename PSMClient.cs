@@ -17,7 +17,7 @@ namespace PSM.OTD;
 public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
 {
     public const string DisplayName = "Pain Studio Mask client";
-    public const string Version = "0.0.3";
+    public const string Version = "0.1.0";
     
     public static PSMClient? Instance;
 
@@ -36,6 +36,12 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     )]
     [DefaultPropertyValue(true)]
     public bool TimeoutProximity { get; set; } = true;
+    [BooleanProperty(
+		"Movement requires proximity",
+        "Send movement packets only in proximity"
+    )]
+    [DefaultPropertyValue(true)]
+    public bool MovementRequiresProximity { get; set; } = true;
 
     private Timer _proximityTimer;
     private Timer ProximityTimer
@@ -73,8 +79,6 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     
     public void Consume(IDeviceReport value)
     {
-        Emit?.Invoke(value);
-        
         if (_firstEvent)
         {
             _firstEvent = false;
@@ -90,7 +94,23 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
             Log.Write(nameof(PSMClient), $"Put it in target app's folder alongside PSM's wintab32.dll");
         }
 
-        if (!Connected || _connection == null) return;
+        if (!Connected || _connection == null)
+		{
+			Emit?.Invoke(value);
+			return;
+		}
+
+        if (value is IProximityReport proximity)
+        {
+            // Log.Write(nameof(PSMClient), $"PROX {proximity.HoverDistance} | NEAR: {proximity.NearProximity}");
+            UpdateProximity(proximity.NearProximity);
+        }
+
+        if (value is OutOfRangeReport outOfRange)
+        {
+            // Log.Write(nameof(PSMClient), $"Out of range.");
+            UpdateProximity(false);
+        }
 
         if (value is ITabletReport report)
         {
@@ -99,7 +119,7 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
 
             float pressure = report.Pressure;
             float pressureValue = pressure / Tablet!.Properties.Specifications.Pen.MaxPressure;
-            uint normalPressure = (uint)(pressureValue * 32767f);
+            int normalPressure = (int)(pressureValue * 32767f);
 
             bool mainBtn = pressureValue > 0.01f;
             uint buttons = (uint)(mainBtn ? 1 : 0);
@@ -121,29 +141,31 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                 y < 0 ||
                 x > AbsoluteOutputMode.Output.Width ||
                 y > AbsoluteOutputMode.Output.Height
-            ) return;
+            )
+			{
+				Emit?.Invoke(value);
+				return;
+			}
+
+            // Proximity requirement check
+            if (
+				MovementRequiresProximity &&
+				!_proximity
+            )
+			{
+				Emit?.Invoke(value);
+				return;
+			}
             
             _connection.SendPacket(new C2SPackets.TabletEvent
             {
                 Buttons = buttons,
-                X = (uint)(x * 1000),
-                Y = (uint)(y * 1000),
+                X = (int)(x * 1000),
+                Y = (int)(y * 1000),
                 NormalPressure = normalPressure,
             });
 
             ProximityTimer = new Timer(ProximityTimerInterval);
-        }
-
-        if (value is IProximityReport proximity)
-        {
-            // Log.Write(nameof(PSMClient), $"PROX {proximity.HoverDistance} | NEAR: {proximity.NearProximity}");
-            UpdateProximity(proximity.NearProximity);
-        }
-
-        if (value is OutOfRangeReport outOfRange)
-        {
-            // Log.Write(nameof(PSMClient), $"Out of range.");
-            UpdateProximity(false);
         }
 
         Emit?.Invoke(value);

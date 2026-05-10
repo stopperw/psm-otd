@@ -6,7 +6,7 @@ namespace PSM.OTD;
 
 public static class NetCode
 {
-    public const uint CompatibleVersion = 1;
+    public const uint CompatibleVersion = 2;
 }
 
 public static class C2SPackets
@@ -24,11 +24,11 @@ public static class C2SPackets
         [JsonPropertyName("type")] public string Type { get; set; } = "TabletEvent";
         [JsonPropertyName("status")] public uint Status { get; set; }
         [JsonPropertyName("buttons")] public uint Buttons { get; set; }
-        [JsonPropertyName("x")] public uint X { get; set; }
-        [JsonPropertyName("y")] public uint Y { get; set; }
-        [JsonPropertyName("z")] public uint Z { get; set; }
-        [JsonPropertyName("normal_pressure")] public uint NormalPressure { get; set; }
-        [JsonPropertyName("tangential_pressure")] public uint TangentialPressure { get; set; }
+        [JsonPropertyName("x")] public int X { get; set; }
+        [JsonPropertyName("y")] public int Y { get; set; }
+        [JsonPropertyName("z")] public int Z { get; set; }
+        [JsonPropertyName("normal_pressure")] public int NormalPressure { get; set; }
+        [JsonPropertyName("tangential_pressure")] public int TangentialPressure { get; set; }
     }
     
     public class Proximity : IPacket
