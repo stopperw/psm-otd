@@ -37,11 +37,11 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
     [DefaultPropertyValue(true)]
     public bool TimeoutProximity { get; set; } = true;
     [BooleanProperty(
-		"Movement requires proximity",
-        "Send movement packets only in proximity"
+		"Use this option if applications always wrongly think the pen is still in use",
+        "Disable automatic proximity"
     )]
-    [DefaultPropertyValue(true)]
-    public bool MovementRequiresProximity { get; set; } = true;
+    [DefaultPropertyValue(false)]
+    public bool DisableAutomaticProximity { get; set; } = false;
 
     private Timer _proximityTimer;
     private Timer ProximityTimer
@@ -116,6 +116,10 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
         {
             // Log.Write(nameof(PSMClient),
             //     $"TAB {report.Position} | {report.Pressure} | {LogHelper.LogButtons(report.PenButtons)}");
+			if (!DisableAutomaticProximity)
+			{
+				UpdateProximity(true);
+			}
 
             float pressure = report.Pressure;
             float pressureValue = pressure / Tablet!.Properties.Specifications.Pen.MaxPressure;
@@ -141,16 +145,6 @@ public class PSMClient : IPositionedPipelineElement<IDeviceReport>, IDisposable
                 y < 0 ||
                 x > AbsoluteOutputMode.Output.Width ||
                 y > AbsoluteOutputMode.Output.Height
-            )
-			{
-				Emit?.Invoke(value);
-				return;
-			}
-
-            // Proximity requirement check
-            if (
-				MovementRequiresProximity &&
-				!_proximity
             )
 			{
 				Emit?.Invoke(value);
